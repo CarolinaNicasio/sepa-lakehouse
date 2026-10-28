@@ -18,6 +18,7 @@ Período analizado: 15/10/2026 al 21/10/2026 (7 días, ~99,9 millones de filas).
 | 8 | Formato de archivo distinto a la especificación | Nombres de columna inválidos y columnas duplicadas | ✅ Resuelto en bronze |
 | 9 | Comercios que no informan todos los días | Precios que quedan como vigentes sin datos nuevos | ⚠️ Limitación documentada |
 | 10 | Campos incompletos o mal cargados | Marca vacía, presentación incorrecta, código postal con letras | ✅ Normalizado en silver |
+| 11 | Provincia que no coincide con las coordenadas (grupo Carrefour) | 34 sucursales del interior contadas como CABA | ✅ Detectado en silver, región "Revisar ubicación" en gold |
 
 ---
 
@@ -164,6 +165,34 @@ El comercio 10 no tiene filas partidas: directamente no informa la provincia. Qu
 | Ceros a la izquierda | Códigos internos como `0000000023897` | Se leen como texto en todas las capas |
 | Mayúsculas inconsistentes | "Wrigleys Spear 12.5g" junto a descripciones en mayúsculas | Se normaliza con `upper` en gold |
 | Bandera repetida | `comercio` tiene 38 filas en bronze para 27 banderas distintas | Auto CDC conserva una por clave |
+
+---
+
+## 11. Provincia que no coincide con las coordenadas (grupo Carrefour)
+
+**Cómo se detectó.** En el dashboard, al filtrar el mapa por la región CABA aparecían puntos en Córdoba, Mendoza, San Luis y el Gran Buenos Aires. El filtro usa la provincia informada por el comercio; el mapa, las coordenadas. Se buscaron las sucursales con provincia CABA (`AR-C`) cuyas coordenadas caen fuera del rectángulo de la Ciudad (latitud -34,71 a -34,52; longitud -58,54 a -58,33).
+
+**Detalle.**
+
+| Cadena | Sucursales | Ubicación real (localidad y coordenadas) | Dato erróneo |
+|---|---|---|---|
+| Express | 22 | Córdoba | Provincia (`AR-C`) |
+| Maxi | 11 | Gran Buenos Aires (Laferrere, Temperley, Claypole, Virrey del Pino, San Vicente), Cañuelas, Chivilcoy, San Luis, Córdoba y Trelew (Chubut) | Provincia (`AR-C`) |
+| Supermercados DIA | 1 | Villa del Parque (CABA) | Coordenadas: latitud -34,07 en lugar de ~-34,60 |
+
+Express y Maxi pertenecen al **grupo Carrefour**: el comercio informa la provincia de su casa central (CABA) en todas sus sucursales. Casos particulares:
+- "Express San Juan 1128": localidad Córdoba, pero las coordenadas caen en la ciudad de Mendoza. También la localidad es dudosa.
+- "Maxi Cacheuta Cba": el nombre sugiere Mendoza (Cacheuta), pero las coordenadas y la abreviatura "Cba" indican Córdoba.
+
+**Impacto.** CABA aparecía con 34 sucursales más de las reales y las provincias del interior, con menos. Cualquier análisis por región quedaba sesgado hacia CABA.
+
+**Solución.**
+- **Silver:** columna `ubicacion_consistente` (falsa si la provincia es CABA y las coordenadas caen fuera de la Ciudad) y expectation de advertencia `provincia_coincide_con_coordenadas`, que mide el problema en cada corrida.
+- **Gold:** en `dim_sucursal`, las sucursales inconsistentes van a la región **"Revisar ubicación"** en lugar de CABA.
+
+La detección está en silver porque es una regla de calidad del dato; la agrupación en regiones está en gold porque es una definición de negocio.
+
+**Limitación y mejora prevista.** La regla solo detecta sucursales declaradas en CABA fuera de la Ciudad. Para validar todas las provincias y corregirlas, el paso siguiente es un cruce geoespacial (*point in polygon*) de las coordenadas con los límites provinciales oficiales del IGN. No se deduce la provincia por la localidad, porque la localidad también puede estar mal (caso "San Juan 1128").
 
 ---
 

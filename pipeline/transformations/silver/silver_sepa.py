@@ -86,6 +86,7 @@ reglas_advertencia_sucursales = {
     "longitud_en_argentina": "longitud IS NULL OR longitud BETWEEN -74 AND -53",
     "provincia_formato_iso": "provincia RLIKE '^AR-[A-Z]$'",
     "codigo_postal_informado": "codigo_postal IS NOT NULL",
+    "provincia_coincide_con_coordenadas": "ubicacion_consistente",
 }
 
 
@@ -117,6 +118,17 @@ def sucursales_limpias():
         texto("sucursales_sabado_horario_atencion").alias("horario_sabado"),
         texto("sucursales_domingo_horario_atencion").alias("horario_domingo"),
         F.col("archivo_origen"),
+    ).withColumn(
+        # Falso si la sucursal dice estar en CABA pero sus coordenadas caen fuera de la Ciudad
+        "ubicacion_consistente",
+        F.expr("""
+            coalesce(
+                NOT (provincia = 'AR-C'
+                     AND latitud IS NOT NULL AND longitud IS NOT NULL
+                     AND NOT (latitud BETWEEN -34.71 AND -34.52
+                              AND longitud BETWEEN -58.54 AND -58.33)),
+                true)
+        """),
     )
 
 

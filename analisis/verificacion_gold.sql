@@ -34,3 +34,24 @@ LEFT JOIN sepa.gold.indice_precios_cadena i
   ON a.bandera_nombre = i.bandera_nombre
 GROUP BY a.bandera_nombre, i.productos_comparados, i.indice_precios
 ORDER BY pct_atipicos DESC;
+
+-- 6. Sucursales con provincia que no coincide con las coordenadas
+SELECT ubicacion_consistente, COUNT(*) AS sucursales
+FROM sepa.gold.dim_sucursal
+GROUP BY ubicacion_consistente;
+
+-- 7. Detalle por cadena de las sucursales a revisar
+SELECT c.bandera_nombre, COUNT(*) AS sucursales_a_revisar
+FROM sepa.gold.dim_sucursal s
+LEFT JOIN sepa.gold.dim_comercio c
+  ON s.id_comercio = c.id_comercio
+ AND s.id_bandera = c.id_bandera
+WHERE s.region = 'Revisar ubicación'
+GROUP BY c.bandera_nombre
+ORDER BY sucursales_a_revisar DESC;
+
+-- 8. Sucursales por region (debe aparecer "Revisar ubicación" y bajar CABA)
+SELECT region, COUNT(*) AS sucursales
+FROM sepa.gold.dim_sucursal
+GROUP BY region
+ORDER BY sucursales DESC;

@@ -57,6 +57,7 @@ SELECT
     ELSE 'Sin dato'
   END AS provincia_nombre,
   CASE
+    WHEN NOT ubicacion_consistente THEN 'Revisar ubicación'
     WHEN provincia = 'AR-C' THEN 'CABA'
     WHEN provincia IN ('AR-B', 'AR-X', 'AR-S', 'AR-E', 'AR-L') THEN 'Pampeana'
     WHEN provincia IN ('AR-A', 'AR-Y', 'AR-K', 'AR-F', 'AR-G', 'AR-T') THEN 'NOA'
@@ -66,7 +67,8 @@ SELECT
     ELSE 'Sin dato'
   END AS region,
   latitud,
-  longitud
+  longitud,
+  ubicacion_consistente
 FROM sepa.silver.sucursales;
 
 
